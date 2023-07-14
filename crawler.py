@@ -42,19 +42,13 @@ Base.metadata.create_all(engine)
 Session = sessionmaker()
 Session.configure(bind=engine)
 
-# Global variables
-visited_links = set()
-channel_queue = Queue()
-nodes = dict()
-
 
 async def crawl_channel(client):
-    global save_thread
     async with client:
         with Session.begin() as session:
             channel_id = (
                 session.query(TelegramQueue)
-                .order_by(TelegramQueue.date.desc())
+                .order_by(TelegramQueue.date)
                 .limit(1)
                 .one()
                 .id
@@ -73,11 +67,6 @@ async def crawl_channel(client):
                     await message_processing(client, channel, message)
 
                 print(channel.title, "crawl completed")
-                channel_queue.task_done()
-
-                save_thread = threading.Thread(target=save_crawled_channels(channel))
-                save_thread.start()
-                save_thread.join()
 
             with Session.begin() as session:
                 session.query(TelegramQueue).filter_by(id=channel_id).delete()
@@ -116,50 +105,8 @@ async def message_processing(client, channel, message):
                 await update_channels(destination_channel)
                 await update_connections(channel, destination_channel, message, 0)
 
-
-def save_crawled_channels(channel):
-    print("Saving files: ", channel.title)
-    global visited_links
-    # Save the visited links set to a file
-    with open("output/visited_links.pkl", "wb") as file:
-        pickle.dump(visited_links, file)
-    # Save the channel queue to a file
-    with open("output/channel_queue.pkl", "wb") as file:
-        pickle.dump(list(channel_queue.queue), file)
-    connection_strength = dict()
-    nodes = dict()
-    print("Saving completed")
-
-
-def load_crawled_channels():
-    print("Initial loading...")
-    global visited_links
-    try:
-        # Load the visited links set from a file
-        with open("visited_links.pkl", "rb") as file:
-            visited_links = pickle.load(file)
-    except FileNotFoundError:
-        visited_links = set()
-
-    try:
-        # Load the channel queue from a file
-        with open("output/channel_queue.pkl", "rb") as file:
-            saved_queue = pickle.load(file)
-            for item in saved_queue:
-                channel_queue.put(item)
-    except FileNotFoundError:
-        pass
-
-
 async def update_channels(channel):
-    global visited_links
     with Session.begin() as session:
-        # Acquire the lock before updating the visited links set
-        # Check if the channel has already been visited
-        if channel.id not in visited_links:
-            visited_links.add(channel.id)
-            # Add the forwarded channel to the queue for crawling
-            channel_queue.put(channel.id)
         if not session.query(
             session.query(TelegramQueue).filter_by(id=channel.id).exists()
         ).scalar():
@@ -211,7 +158,6 @@ async def main():
     try:
         client = TelegramClient("session_name", API_ID, API_HASH)
         await client.start()
-        load_crawled_channels()
         # save_thread = threading.Thread(target=save_crawled_channels)
         # save_thread.start()
 
@@ -227,12 +173,13 @@ async def main():
                 session.merge(ChannelStart)
         while True:
             # Create new thread in place completed one
-            if not channel_queue.empty():
+            with Session.begin() as session:
+                ChannelsInQueue = session.query(TelegramQueue).count()
+            if ChannelsInQueue > 0:
                 await crawl_channel(client)
 
                 # Wait for all tasks to be completed
-            channel_queue.join()
-
+            
     except KeyboardInterrupt:
         print("Exiting the crawler..")
 
