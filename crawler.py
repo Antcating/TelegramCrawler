@@ -11,8 +11,9 @@ import configparser
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session
 
-from db_class import TelegramChannel, TelegramConnection
+from db_class import TelegramChannel, TelegramConnection, TelegramQueue, Base
 
 # Import config parser
 config = configparser.ConfigParser()
@@ -20,11 +21,11 @@ config.sections()
 
 config.read("config.ini")
 # Enter your Telegram API token here
-API_ID = config['MAIN']["API_ID"]
-API_HASH = config['MAIN']["API_HASH"]
+API_ID = config["MAIN"]["API_ID"]
+API_HASH = config["MAIN"]["API_HASH"]
 
 # Enter the starting channel ID here
-START_CHANNEL_ID = int(config['MAIN']["START_CHANNEL_ID"])
+START_CHANNEL_ID = int(config["MAIN"]["START_CHANNEL_ID"])
 
 # Create a lock for thread synchronization
 lock = threading.Lock()
@@ -36,24 +37,33 @@ save_thread = threading.Thread()
 DATE_BREAK = datetime.datetime(2022, 2, 24, 3, 0, 0, tzinfo=datetime.timezone.utc)
 
 # Postgres
-engine = create_engine(config['MAIN']['POSTGRES'])
-# Base.metadata.create_all(engine)
-S2 = sessionmaker(engine)
+engine = create_engine(config["MAIN"]["POSTGRES"])
+Base.metadata.create_all(engine)
+Session = sessionmaker()
+Session.configure(bind=engine)
 
 # Global variables
 visited_links = set()
 channel_queue = Queue()
 nodes = dict()
 
+
 async def crawl_channel(client):
     global save_thread
     async with client:
-        channel_id = channel_queue.get()
+        with Session.begin() as session:
+            channel_id = (
+                session.query(TelegramQueue)
+                .order_by(TelegramQueue.date.desc())
+                .limit(1)
+                .one()
+                .id
+            )
         try:
             channel = await client.get_entity(channel_id)
 
             # Update channels table
-            if not channel.megagroup: 
+            if not channel.megagroup:
                 await update_channels(channel)
 
                 # Check if the request was successful
@@ -68,8 +78,9 @@ async def crawl_channel(client):
                 save_thread = threading.Thread(target=save_crawled_channels(channel))
                 save_thread.start()
                 save_thread.join()
-        # except telethon.errors.ChannelPrivateError as e:
-        #     print(f"Error crawling channel {channel_id}: {e}")
+
+            with Session.begin() as session:
+                session.query(TelegramQueue).filter_by(id=channel_id).delete()
         except Exception as e:
             traceback.print_exc()
             raise "Exception"
@@ -83,7 +94,6 @@ async def message_processing(client, channel, message):
             forwarded_channel_id = message.fwd_from.from_id.channel_id
             destination_channel = await url_handler(client, forwarded_channel_id)
             if destination_channel and not destination_channel.megagroup:
-                
                 await update_channels(destination_channel)
                 await update_connections(channel, destination_channel, message, 0)
     elif message.entities:
@@ -140,16 +150,21 @@ def load_crawled_channels():
     except FileNotFoundError:
         pass
 
+
 async def update_channels(channel):
-    global visited_links, connection_strength, nodes
-    # Acquire the lock before updating the visited links set
-    with lock and S2() as session, session.begin():
+    global visited_links
+    with Session.begin() as session:
+        # Acquire the lock before updating the visited links set
         # Check if the channel has already been visited
         if channel.id not in visited_links:
             visited_links.add(channel.id)
             # Add the forwarded channel to the queue for crawling
             channel_queue.put(channel.id)
-        
+        if not session.query(
+            session.query(TelegramQueue).filter_by(id=channel.id).exists()
+        ).scalar():
+            ChannelQueue = TelegramQueue(id=channel.id, date=datetime.datetime.now())
+            session.merge(ChannelQueue)
         # To channel database
         ChannelRow = TelegramChannel(
             id=channel.id,
@@ -159,29 +174,35 @@ async def update_channels(channel):
         )
         session.merge(ChannelRow)
 
+
 async def update_connections(origin, destination, message, type):
-    with lock and S2() as session, session.begin():
+    with Session.begin() as session:
         if message.date < DATE_BREAK:
             date_stamp = "before"
         elif message.date >= DATE_BREAK:
             date_stamp = "after"
 
         # TelegramConnections.update()
-        if not session.query(TelegramConnection) \
-                .filter_by(id_origin=origin.id, id_destination=destination.id):
+        if not session.query(TelegramConnection).filter_by(
+            id_origin=origin.id, id_destination=destination.id
+        ):
             ConnectionRow = TelegramConnection(
                 id_origin=origin.id,
                 id_destination=destination.id,
-                
                 strength=1,
                 type=type,
             )
             session.merge(ConnectionRow)
 
         else:
-            session.query(TelegramConnection) \
-                .filter_by(id_origin=origin.id, id_destination=destination.id) \
-                .update({TelegramConnection.strength: TelegramConnection.strength+1, TelegramConnection.type: type})
+            session.query(TelegramConnection).filter_by(
+                id_origin=origin.id, id_destination=destination.id
+            ).update(
+                {
+                    TelegramConnection.strength: TelegramConnection.strength + 1,
+                    TelegramConnection.type: type,
+                }
+            )
 
 
 async def main():
@@ -195,10 +216,15 @@ async def main():
         # save_thread.start()
 
         # Add the starting channel to the queue if it's not in the visited links set
-        if START_CHANNEL_ID not in visited_links:
-            channel_queue.put(START_CHANNEL_ID)
 
-        
+        with Session.begin() as session:
+            if not session.query(
+                session.query(TelegramChannel).filter_by(id=START_CHANNEL_ID).exists()
+            ).scalar():
+                ChannelStart = TelegramQueue(
+                    id=START_CHANNEL_ID, date=datetime.datetime.now()
+                )
+                session.merge(ChannelStart)
         while True:
             # Create new thread in place completed one
             if not channel_queue.empty():
