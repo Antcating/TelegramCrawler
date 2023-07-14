@@ -2,16 +2,13 @@ import asyncio
 import datetime
 import telethon.types
 from telethon.sync import TelegramClient
-from queue import Queue
 import threading
-import pickle
 import traceback
 from url import url_handler
 import configparser
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session
 
 from db_class import TelegramChannel, TelegramConnection, TelegramQueue, Base
 
@@ -105,6 +102,7 @@ async def message_processing(client, channel, message):
                 await update_channels(destination_channel)
                 await update_connections(channel, destination_channel, message, 0)
 
+
 async def update_channels(channel):
     with Session.begin() as session:
         if not session.query(
@@ -179,7 +177,7 @@ async def main():
                 await crawl_channel(client)
 
                 # Wait for all tasks to be completed
-            
+
     except KeyboardInterrupt:
         print("Exiting the crawler..")
 
