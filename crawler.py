@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import telethon.types
 from telethon.sync import TelegramClient
-import threading
 import traceback
 from url import url_handler
 import configparser
@@ -10,7 +9,8 @@ import configparser
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
-from db_class import TelegramChannel, TelegramConnection, TelegramQueue, Base
+from db_class import TelegramQueue, Base
+from db_class import TelegramChannel, TelegramConnection_after, TelegramConnection_before
 
 # Import config parser
 config = configparser.ConfigParser()
@@ -23,12 +23,6 @@ API_HASH = config["MAIN"]["API_HASH"]
 
 # Enter the starting channel ID here
 START_CHANNEL_ID = int(config["MAIN"]["START_CHANNEL_ID"])
-
-# Create a lock for thread synchronization
-lock = threading.Lock()
-
-# Start the save mechanism in a separate thread
-save_thread = threading.Thread()
 
 # Date of split in analysis
 DATE_BREAK = datetime.datetime(2022, 2, 24, 3, 0, 0, tzinfo=datetime.timezone.utc)
@@ -124,13 +118,17 @@ async def update_connections(origin, destination, message, type):
     with Session.begin() as session:
         if message.date < DATE_BREAK:
             date_stamp = "before"
+            TelegramConnection = TelegramConnection_before
         elif message.date >= DATE_BREAK:
             date_stamp = "after"
+            TelegramConnection = TelegramConnection_after
 
         # TelegramConnections.update()
-        if not session.query(TelegramConnection).filter_by(
+        if not session.query(
+            session.query(TelegramConnection).filter_by(
             id_origin=origin.id, id_destination=destination.id
-        ):
+            ).exists()
+        ).scalar():
             ConnectionRow = TelegramConnection(
                 id_origin=origin.id,
                 id_destination=destination.id,
@@ -156,10 +154,6 @@ async def main():
     try:
         client = TelegramClient("session_name", API_ID, API_HASH)
         await client.start()
-        # save_thread = threading.Thread(target=save_crawled_channels)
-        # save_thread.start()
-
-        # Add the starting channel to the queue if it's not in the visited links set
 
         with Session.begin() as session:
             if not session.query(
