@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-import models
+from . import models
 
 
 def get_channel_by_username(db: Session, channel_username: str):

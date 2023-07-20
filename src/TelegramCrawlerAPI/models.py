@@ -8,7 +8,7 @@ from sqlalchemy.orm import mapped_column
 
 from sqlalchemy import create_engine
 
-from database import Base
+from .database import Base
 
 class TelegramChannel(Base):
     __tablename__ = "TelegramChannels"
