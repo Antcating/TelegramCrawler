@@ -1,9 +1,7 @@
 # Imports
-from sqlalchemy import ForeignKey, Integer, Sequence, DateTime
-from sqlalchemy import String, Column, Table, MetaData
+from sqlalchemy import ForeignKey, Integer, Sequence, DateTime, String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import mapped_column
 
 class Base(DeclarativeBase):

@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import os
 import telethon.types
 from telethon.sync import TelegramClient
 import traceback
@@ -10,8 +9,8 @@ import configparser
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
-from db_class import TelegramQueue, Base
-from db_class import (
+from TelegramCrawler.models import TelegramQueue, Base
+from TelegramCrawler.models import (
     TelegramChannel,
     TelegramConnection_after,
     TelegramConnection_before,
@@ -135,15 +134,15 @@ async def update_channels(channel: telethon.types.Channel):
 
 
 async def update_connections(
-    origin: telethon.types.Channel, 
-    destination: telethon.types.Channel, 
+    origin: telethon.types.Channel,
+    destination: telethon.types.Channel,
     message: telethon.types.Message,
-    type: int
+    type: int,
 ):
     """Updates connections in PostgresQL
 
     Args:
-        origin (telethon.types.Channel): Origin channel 
+        origin (telethon.types.Channel): Origin channel
         destination (telethon.types.Channel): Destination channel
         message (telethon.types.Message): Current Message in which connection was detected
         type (int): Type of conenction
