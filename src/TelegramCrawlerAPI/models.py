@@ -1,12 +1,8 @@
 # Imports
 from sqlalchemy import ForeignKey, Integer, Sequence, DateTime
-from sqlalchemy import String, Column, Table, MetaData
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import mapped_column
-
-from sqlalchemy import create_engine
 
 from .database import Base
 
