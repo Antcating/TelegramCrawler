@@ -6,3 +6,9 @@ class Channel(BaseModel):
     username: str
     title: str
     date: datetime.datetime
+
+class Connection(BaseModel):
+    id_origin: int
+    id_destination: int
+    strength: int
+    type: int
