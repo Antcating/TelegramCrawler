@@ -3,9 +3,4 @@ output*/
 config.ini
 __*__
 .vscode
-include
-bin
-lib
-lib64
-pyvenv.cfg
-share
+.venv

@@ -8,10 +8,7 @@ from sqlalchemy.orm import mapped_column
 
 from sqlalchemy import create_engine
 
-meta = MetaData()
-
-class Base(DeclarativeBase):
-    pass
+from database import Base
 
 class TelegramChannel(Base):
     __tablename__ = "TelegramChannels"
