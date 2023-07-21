@@ -9,12 +9,13 @@ import configparser
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
-from TelegramCrawler.models import TelegramQueue, Base
-from TelegramCrawler.models import (
+from models import TelegramQueue, Base
+from models import (
     TelegramChannel,
-    TelegramConnection_after,
-    TelegramConnection_before,
+    TelegramConnection,
 )
+
+from ..constants import DATE_BREAK
 
 # Import config parser
 config = configparser.ConfigParser()
@@ -26,9 +27,6 @@ API_HASH = config["CRAWLER"]["API_HASH"]
 
 # Enter the starting channel ID here
 START_CHANNEL_ID = int(config["CRAWLER"]["START_CHANNEL_ID"])
-
-# Date of split in analysis
-DATE_BREAK = datetime.datetime(2022, 2, 24, 3, 0, 0, tzinfo=datetime.timezone.utc)
 
 # Postgres
 engine = create_engine(config["CRAWLER"]["POSTGRES"])
@@ -94,7 +92,7 @@ async def message_processing(
             destination_channel = await url_handler(client, forwarded_channel_id)
             if destination_channel and not destination_channel.megagroup:
                 await update_channels(destination_channel)
-                await update_connections(channel, destination_channel, message, 0)
+                await update_connections(channel, destination_channel, message)
     elif message.entities:
         for entity in message.entities:
             destination_channel = None
@@ -113,7 +111,7 @@ async def message_processing(
 
             if destination_channel and not destination_channel.megagroup:
                 await update_channels(destination_channel)
-                await update_connections(channel, destination_channel, message, 0)
+                await update_connections(channel, destination_channel, message)
 
 
 async def update_channels(channel: telethon.types.Channel):
@@ -137,7 +135,6 @@ async def update_connections(
     origin: telethon.types.Channel,
     destination: telethon.types.Channel,
     message: telethon.types.Message,
-    type: int,
 ):
     """Updates connections in PostgresQL
 
@@ -145,19 +142,18 @@ async def update_connections(
         origin (telethon.types.Channel): Origin channel
         destination (telethon.types.Channel): Destination channel
         message (telethon.types.Message): Current Message in which connection was detected
-        type (int): Type of conenction
-            type: 0 - Connection via link or mention
-            type: 1 - Connection via forward
+        type (int): Date of break 
+            0 = before
+            1 = after
     """
     with Session.begin() as session:
         if message.date < DATE_BREAK:
-            TelegramConnection = TelegramConnection_before
+            type = 0
         elif message.date >= DATE_BREAK:
-            TelegramConnection = TelegramConnection_after
-
+            type = 1
         if not session.query(
             session.query(TelegramConnection)
-            .filter_by(id_origin=origin.id, id_destination=destination.id)
+            .filter_by(id_origin=origin.id, id_destination=destination.id, type=type)
             .exists()
         ).scalar():
             ConnectionRow = TelegramConnection(
@@ -170,11 +166,10 @@ async def update_connections(
 
         else:
             session.query(TelegramConnection).filter_by(
-                id_origin=origin.id, id_destination=destination.id
+                id_origin=origin.id, id_destination=destination.id, type=type
             ).update(
                 {
                     TelegramConnection.strength: TelegramConnection.strength + 1,
-                    TelegramConnection.type: type,
                 }
             )
 
