@@ -10,7 +10,7 @@ config.sections()
 
 config.read("config.ini")
 
-SQLALCHEMY_DATABASE_URL = config["API"]["POSTGRESRO"]
+SQLALCHEMY_DATABASE_URL = config["API"]["POSTGRESRW"]
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL
