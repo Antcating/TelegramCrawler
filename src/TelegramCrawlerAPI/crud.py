@@ -103,6 +103,9 @@ def create_connection(db: Session, connection: schemas.ConnectionCreate):
 
 
 def delete_channel(db: Session, channel_id: schemas.Channel):
+    channel = get_channel_by_id(channel_id)
+    if channel is None: 
+        return None
     list_conenctions = [
         get_channel_connections_in(db, channel_id, 0),
         get_channel_connections_out(db, channel_id, 0),
@@ -110,9 +113,7 @@ def delete_channel(db: Session, channel_id: schemas.Channel):
         get_channel_connections_out(db, channel_id, 1),
     ]
     if any(list_conenctions):
-        return schemas.Deletion(
-            ok=False, details="Deleting this channel violates existing connection"
-        )
+        return 'Connection'
 
     db.query(models.TelegramChannel).filter(
         models.TelegramChannel.id == channel_id
