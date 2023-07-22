@@ -173,7 +173,21 @@ def create_connection(connection: schemas.ConnectionCreate, db: Session = Depend
         raise HTTPException(status_code=403, detail='At least one of the channels doesn`t exist')
     return db_connection
 
-@app.delete("/connection/", response_model=schemas.Deletion)
+@app.patch("/connection/", response_model=schemas.Success)
+def update_connection(id_origin: int, id_destination: int, type: int, db: Session = Depends(get_db)):
+    db_connection = crud.update_connection(db, id_origin, id_destination, type)
+    if not db_connection:
+        raise HTTPException(status_code=404, detail='No connection between provided channels')
+    return db_connection
+
+@app.get('/connection/', response_model=schemas.Connection)
+def get_connection(id_origin: int, id_destination: int, type: int, db: Session = Depends(get_db)):
+    db_connection = crud.get_connection(db, id_origin, id_destination, type)
+    if not db_connection:
+        raise HTTPException(status_code=404, detail='No connection between provided channels')
+    return db_connection
+
+@app.delete("/connection/", response_model=schemas.Success)
 def delete_connection(id_origin: int, id_destination: int, db: Session = Depends(get_db)):
     """Deletes connection from DB (both before and after)
 
@@ -187,7 +201,7 @@ def delete_connection(id_origin: int, id_destination: int, db: Session = Depends
     """
     return crud.delete_connection(db, id_origin, id_destination)
 
-@app.delete("/channel/", response_model=schemas.Deletion)
+@app.delete("/channel/", response_model=schemas.Success)
 def delete_channel(channel_id: int, db: Session = Depends(get_db)):
     """Deletes channel
 
@@ -202,9 +216,30 @@ def delete_channel(channel_id: int, db: Session = Depends(get_db)):
     Returns:
         schemas.Deletion: returns OK status of the process
     """
-    status = crud.get_channel_by_id(db, channel_id)
-    if not status:
+    db_status = crud.get_channel_by_id(db, channel_id)
+    if not db_status:
         raise HTTPException(status_code=404, detail='Channel with this ID does not exist')
-    if status == 'Connection':
+    if db_status == 'Connection':
         raise HTTPException(status_code=403, detail='Channel with this ID has existing connections')
     return crud.delete_channel(db, channel_id)
+
+@app.get('/queue', response_model=schemas.Queue)
+def get_last_in_queue(db: Session = Depends(get_db)):
+    db_queue = crud.get_last_in_queue(db)
+    if not db_queue:
+        raise HTTPException(status_code=404, detail='No channels in queue')
+    return db_queue
+
+@app.post('/queue', response_model=schemas.Queue)
+def add_to_queue(queue_element: schemas.QueueCreate, db: Session = Depends(get_db)):
+    db_queue = crud.add_to_queue(db, queue_element)
+    if db_queue is None:
+        raise HTTPException(status_code=403, detail='This channel is already in the queue!')
+    return db_queue
+
+@app.delete('/queue', response_model=schemas.Success)
+def delete_from_queue(channel_id: int, db: Session = Depends(get_db)):
+    db_status = crud.delete_from_queue(db, channel_id)
+    if db_status is None:
+        raise HTTPException(status_code=404, detail='There is no channel with provided ID in queue')
+    return db_status
