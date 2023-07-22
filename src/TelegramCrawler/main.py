@@ -1,20 +1,21 @@
 import asyncio
 import datetime
-import os
+import requests
 import telethon.types
 from telethon.sync import TelegramClient
 import traceback
 from url import url_handler
 import configparser
+import json
 
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
+# from sqlalchemy.orm import sessionmaker
+# from sqlalchemy import create_engine
 
-from models import TelegramQueue, Base
-from models import (
-    TelegramChannel,
-    TelegramConnection,
-)
+# from models import TelegramQueue, Base
+# from models import (
+#     TelegramChannel,
+#     TelegramConnection,
+# )
 
 from database import SessionLocal, engine
 from constants import DATE_BREAK
@@ -31,26 +32,21 @@ API_HASH = config["CRAWLER"]["API_HASH"]
 START_CHANNEL_ID = int(config["CRAWLER"]["START_CHANNEL_ID"])
 
 # Postgres
-engine = create_engine(config["CRAWLER"]["POSTGRES"])
-Base.metadata.create_all(bind=engine)
-Session = SessionLocal()
+# engine = create_engine(config["CRAWLER"]["POSTGRES"])
+# Base.metadata.create_all(bind=engine)
+# Session = SessionLocal()
+
+# Server
+SERVER = config["CRAWLER"]["SERVER"]
 
 
-async def crawl_channel(client: TelegramClient):
+async def crawl_channel(client: TelegramClient, channel_id: int):
     """Gets channel from DB and parses messages
 
     Args:
         client (TelegramClient): Telegram UserAPI client
     """
     async with client:
-        with Session as session:
-            channel_id = (
-                session.query(TelegramQueue)
-                .order_by(TelegramQueue.date)
-                .limit(1)
-                .one()
-                .id
-            )
         try:
             channel = await client.get_entity(channel_id)
 
@@ -66,8 +62,8 @@ async def crawl_channel(client: TelegramClient):
 
                 print(channel.title, "crawl completed")
 
-            with Session as session:
-                session.query(TelegramQueue).filter_by(id=channel_id).delete()
+            response = requests.delete(SERVER + "/queue", data=channel_id)
+            # print(response.status_code, response.json())
         except Exception as e:
             traceback.print_exc()
             raise "Exception"
@@ -116,20 +112,21 @@ async def message_processing(
 
 
 async def update_channels(channel: telethon.types.Channel):
-    with Session as session:
-        if not session.query(
-            session.query(TelegramQueue).filter_by(id=channel.id).exists()
-        ).scalar():
-            ChannelQueue = TelegramQueue(id=channel.id, date=datetime.datetime.now())
-            session.merge(ChannelQueue)
-        # To channel database
-        ChannelRow = TelegramChannel(
-            id=channel.id,
-            title=channel.title,
-            username=channel.username if channel.username else 0,
-            date=channel.date,
-        )
-        session.merge(ChannelRow)
+    requests.post(
+        SERVER + "/queue",
+        json={"id": channel.id, "date": str(datetime.datetime.now())},
+        headers={"Content-type": "application/json"},
+    )
+
+    # To channel database
+    payload = {
+        "id": channel.id,
+        "title": channel.title,
+        "username": channel.username,
+        "date": str(channel.date),
+    }
+    response = requests.post(SERVER + "/channel", json=payload)
+    # print(response.json())
 
 
 async def update_connections(
@@ -143,36 +140,42 @@ async def update_connections(
         origin (telethon.types.Channel): Origin channel
         destination (telethon.types.Channel): Destination channel
         message (telethon.types.Message): Current Message in which connection was detected
-        type (int): Date of break 
+        type (int): Date of break
             0 = before
             1 = after
     """
-    with Session as session:
-        if message.date < DATE_BREAK:
-            type = 0
-        elif message.date >= DATE_BREAK:
-            type = 1
-        if not session.query(
-            session.query(TelegramConnection)
-            .filter_by(id_origin=origin.id, id_destination=destination.id, type=type)
-            .exists()
-        ).scalar():
-            ConnectionRow = TelegramConnection(
-                id_origin=origin.id,
-                id_destination=destination.id,
-                strength=1,
-                type=type,
-            )
-            session.merge(ConnectionRow)
+    if message.date < DATE_BREAK:
+        type = 0
+    elif message.date >= DATE_BREAK:
+        type = 1
 
-        else:
-            session.query(TelegramConnection).filter_by(
-                id_origin=origin.id, id_destination=destination.id, type=type
-            ).update(
-                {
-                    TelegramConnection.strength: TelegramConnection.strength + 1,
-                }
-            )
+    response = requests.get(
+        SERVER + "/connection",
+        params={"id_origin": origin.id, "id_destination": destination.id, "type": type},
+    )
+    if response.status_code == 404:
+        response = requests.post(
+            SERVER + "/connection",
+            json={
+                "id_origin": origin.id,
+                "id_destination": destination.id,
+                "strength": 1,
+                "type": type,
+                "date": str(message.date),
+            },
+            headers={"Content-type": "application/json"},
+        )
+        # print(response.status_code, response.json())
+    elif response.status_code == 200:
+        response = requests.patch(
+            SERVER + "/connection",
+            params={
+                "id_origin": origin.id,
+                "id_destination": destination.id,
+                "type": type,
+            },
+        )
+        # print(response.status_code, response.json())
 
 
 async def main():
@@ -182,22 +185,24 @@ async def main():
         client = TelegramClient("session_name", API_ID, API_HASH)
         await client.start()
 
-        with Session as session:
-            if not session.query(
-                session.query(TelegramChannel).filter_by(id=START_CHANNEL_ID).exists()
-            ).scalar():
-                ChannelStart = TelegramQueue(
-                    id=START_CHANNEL_ID, date=datetime.datetime.now()
+        queue_channel = requests.get(SERVER + "/queue")
+        if queue_channel.status_code == 404:
+            response = input(
+                "Your queue seems empty. Do you wanna add default starting channel defined in CONFIG? (y/n)"
+            )[0]
+            if response == "y":
+                queue_channel = requests.post(
+                    SERVER + "/queue",
+                    json={"id": START_CHANNEL_ID, "date": str(datetime.datetime.now())},
+                    headers={"Content-type": "application/json"},
                 )
-                session.merge(ChannelStart)
-        while True:
+                # print(queue_channel.json())
+        while queue_channel.status_code == 200:
             # Create new thread in place completed one
-            with Session as session:
-                ChannelsInQueue = session.query(TelegramQueue).count()
-            if ChannelsInQueue > 0:
-                await crawl_channel(client)
+            channel_id = queue_channel.json()["id"]
+            await crawl_channel(client, channel_id)
 
-                # Wait for all tasks to be completed
+            queue_channel = requests.get(SERVER + "/queue")
 
     except KeyboardInterrupt:
         print("Exiting the crawler..")
