@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import os
 import telethon.types
 from telethon.sync import TelegramClient
 import traceback
@@ -15,7 +16,8 @@ from models import (
     TelegramConnection,
 )
 
-from ..constants import DATE_BREAK
+from database import SessionLocal, engine
+from constants import DATE_BREAK
 
 # Import config parser
 config = configparser.ConfigParser()
@@ -30,9 +32,8 @@ START_CHANNEL_ID = int(config["CRAWLER"]["START_CHANNEL_ID"])
 
 # Postgres
 engine = create_engine(config["CRAWLER"]["POSTGRES"])
-Base.metadata.create_all(engine)
-Session = sessionmaker()
-Session.configure(bind=engine)
+Base.metadata.create_all(bind=engine)
+Session = SessionLocal()
 
 
 async def crawl_channel(client: TelegramClient):
@@ -42,7 +43,7 @@ async def crawl_channel(client: TelegramClient):
         client (TelegramClient): Telegram UserAPI client
     """
     async with client:
-        with Session.begin() as session:
+        with Session as session:
             channel_id = (
                 session.query(TelegramQueue)
                 .order_by(TelegramQueue.date)
@@ -65,7 +66,7 @@ async def crawl_channel(client: TelegramClient):
 
                 print(channel.title, "crawl completed")
 
-            with Session.begin() as session:
+            with Session as session:
                 session.query(TelegramQueue).filter_by(id=channel_id).delete()
         except Exception as e:
             traceback.print_exc()
@@ -115,7 +116,7 @@ async def message_processing(
 
 
 async def update_channels(channel: telethon.types.Channel):
-    with Session.begin() as session:
+    with Session as session:
         if not session.query(
             session.query(TelegramQueue).filter_by(id=channel.id).exists()
         ).scalar():
@@ -146,7 +147,7 @@ async def update_connections(
             0 = before
             1 = after
     """
-    with Session.begin() as session:
+    with Session as session:
         if message.date < DATE_BREAK:
             type = 0
         elif message.date >= DATE_BREAK:
@@ -181,7 +182,7 @@ async def main():
         client = TelegramClient("session_name", API_ID, API_HASH)
         await client.start()
 
-        with Session.begin() as session:
+        with Session as session:
             if not session.query(
                 session.query(TelegramChannel).filter_by(id=START_CHANNEL_ID).exists()
             ).scalar():
@@ -191,7 +192,7 @@ async def main():
                 session.merge(ChannelStart)
         while True:
             # Create new thread in place completed one
-            with Session.begin() as session:
+            with Session as session:
                 ChannelsInQueue = session.query(TelegramQueue).count()
             if ChannelsInQueue > 0:
                 await crawl_channel(client)
