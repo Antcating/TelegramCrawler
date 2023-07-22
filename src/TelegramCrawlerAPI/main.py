@@ -111,7 +111,7 @@ def get_channel_connections_in(channel_id: int, type: int, db: Session = Depends
         channel_title (int): Channel id
 
     Returns:
-        _type_: _description_
+        list[schemas.Connection]: Connections object from pydantic
     """
     db_connections = crud.get_channel_connections_in(db, channel_id, type)
     if db_connections is None:
@@ -128,7 +128,7 @@ def get_channel_connections_out(channel_id: int, type: int, db: Session = Depend
         channel_title (int): Channel id
 
     Returns:
-        _type_: _description_
+        list[schemas.Connection]: Connections object from pydantic
     """
     db_connections = crud.get_channel_connections_out(db, channel_id, type)
     if db_connections is None:
@@ -137,6 +137,18 @@ def get_channel_connections_out(channel_id: int, type: int, db: Session = Depend
 
 @app.post("/channel/", response_model=schemas.Channel)
 def create_channel(channel: schemas.Channel, db: Session = Depends(get_db)):
+    """Creates channel in DB
+
+    Args:
+        channel (schemas.Channel): Channel object from pydantic
+        db (Session, optional): SQLAlchemy Session. Defaults to Depends(get_db).
+
+    Raises:
+        HTTPException: Returns status_code 400 if channel already exists 
+
+    Returns:
+        schemas.Channel: Returns created channel
+    """
     db_channel = crud.get_channel_by_id(db, channel.id)
     if db_channel:
         raise HTTPException(status_code=400, detail='Channel already exists')
@@ -144,19 +156,55 @@ def create_channel(channel: schemas.Channel, db: Session = Depends(get_db)):
 
 @app.post("/connection/", response_model=schemas.Connection)
 def create_connection(connection: schemas.ConnectionCreate, db: Session = Depends(get_db)):
+    """Creates conection using IDs of the channels
+
+    Args:
+        connection (schemas.ConnectionCreate): Connection object from pydantic
+        db (Session, optional): SQLAlchemy Session. Defaults to Depends(get_db).
+
+    Raises:
+        HTTPException: returns status_code 403 if one of channel IDs doesn't exists in DB 
+
+    Returns:
+        schemas.Connection: Created Connection object from pydantic
+    """
     db_connection = crud.create_connection(db, connection)
     if not db_connection:
         raise HTTPException(status_code=403, detail='At least one of the channels doesn`t exist')
     return db_connection
 
-@app.delete("/connection_after/", response_model=schemas.Deletion)
+@app.delete("/connection/", response_model=schemas.Deletion)
 def delete_connection(id_origin: int, id_destination: int, db: Session = Depends(get_db)):
+    """Deletes connection from DB (both before and after)
 
+    Args:
+        id_origin (int): ID of channel from which connections are going
+        id_destination (int): ID of channel to which connections are going
+        db (Session, optional): SQLAlchemy Session. Defaults to Depends(get_db).
+
+    Returns:
+        schemas.Deletion: returns ok status using pydantic schema
+    """
     return crud.delete_connection(db, id_origin, id_destination)
 
 @app.delete("/channel/", response_model=schemas.Deletion)
 def delete_channel(channel_id: int, db: Session = Depends(get_db)):
-    db_channel = crud.get_channel_by_id(db, channel_id)
-    if not db_channel:
-        raise HTTPException(status_code=404, detail='No channel was found')
+    """Deletes channel
+
+    Args:
+        channel_id (int): ID of channel to delete
+        db (Session, optional): SQLAlchemy Session. Defaults to Depends(get_db).
+
+    Raises:
+        HTTPException: returns status_code 403 if channel with given ID has existing connections
+        HTTPException: returns status_code 404 if channel with given ID does not exist
+
+    Returns:
+        schemas.Deletion: returns OK status of the process
+    """
+    status = crud.get_channel_by_id(db, channel_id)
+    if not status:
+        raise HTTPException(status_code=404, detail='Channel with this ID does not exist')
+    if status == 'Connection':
+        raise HTTPException(status_code=403, detail='Channel with this ID has existing connections')
     return crud.delete_channel(db, channel_id)
