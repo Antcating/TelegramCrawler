@@ -1,5 +1,5 @@
 # Imports
-from sqlalchemy import ForeignKey, Integer, Sequence, DateTime
+from sqlalchemy import Float, ForeignKey, Integer, Sequence, DateTime
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
