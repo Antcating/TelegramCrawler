@@ -162,7 +162,8 @@ async def main():
         if queue_channel.status_code == 404:
             response = input(
                 """Your queue seems empty. Do you wanna add default starting channel defined in CONFIG? (y/n) 
-By default channel ID set to channel ID of the creater of this crawler"""
+By default channel ID set to channel ID of the creater of this crawler
+Answer: """
             )[0]
             if response == "y":
                 queue_channel = requests.post(
