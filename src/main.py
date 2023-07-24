@@ -7,8 +7,6 @@ import traceback
 from url import url_handler
 import configparser
 
-from constants import DATE_BREAK
-
 # Import config parser
 config = configparser.ConfigParser()
 config.sections()
@@ -38,20 +36,18 @@ async def crawl_channel(client: TelegramClient, channel_id: int):
     async with client:
         try:
             channel = await client.get_entity(channel_id)
-
             # Update channels table
             if not channel.megagroup:
-                await update_channels(channel)
-
-                # Check if the request was successful
                 print(f"Crawling channel: {channel.title}")
+
+                requests.delete(SERVER + "/connections/", params={'channel_id': channel_id})
 
                 async for message in client.iter_messages(channel):
                     await message_processing(client, channel, message)
 
                 print(channel.title, "crawl completed")
 
-            response = requests.delete(SERVER + "/queue", data=channel_id)
+            response = requests.delete(SERVER + "/queue/", params={"channel_id": channel_id})
             # print(response.status_code, response.json())
         except Exception as e:
             traceback.print_exc()
@@ -102,7 +98,7 @@ async def message_processing(
 
 async def update_channels(channel: telethon.types.Channel):
     requests.post(
-        SERVER + "/queue",
+        SERVER + "/queue/",
         json={"id": channel.id, "date": str(datetime.datetime.now())},
         headers={"Content-type": "application/json"},
     )
@@ -114,8 +110,7 @@ async def update_channels(channel: telethon.types.Channel):
         "username": channel.username,
         "date": str(channel.date),
     }
-    response = requests.post(SERVER + "/channel", json=payload)
-    # print(response.json())
+    response = requests.post(SERVER + "/channel/", json=payload)
 
 
 async def update_connections(
@@ -129,42 +124,31 @@ async def update_connections(
         origin (telethon.types.Channel): Origin channel
         destination (telethon.types.Channel): Destination channel
         message (telethon.types.Message): Current Message in which connection was detected
-        type (int): Date of break
-            0 = before
-            1 = after
     """
-    if message.date < DATE_BREAK:
-        type = 0
-    elif message.date >= DATE_BREAK:
-        type = 1
-
     response = requests.get(
-        SERVER + "/connection",
-        params={"id_origin": origin.id, "id_destination": destination.id, "type": type},
+        SERVER + "/connection_by_date/",
+        params={"id_origin": origin.id, "id_destination": destination.id, "date": str(message.date)},
     )
     if response.status_code == 404:
         response = requests.post(
-            SERVER + "/connection",
+            SERVER + "/connection/",
             json={
                 "id_origin": origin.id,
                 "id_destination": destination.id,
                 "strength": 1,
-                "type": type,
                 "date": str(message.date),
             },
             headers={"Content-type": "application/json"},
         )
-        # print(response.status_code, response.json())
     elif response.status_code == 200:
         response = requests.patch(
-            SERVER + "/connection",
+            SERVER + "/connection/",
             params={
                 "id_origin": origin.id,
                 "id_destination": destination.id,
-                "type": type,
+                "date": str(message.date),
             },
         )
-        # print(response.status_code, response.json())
 
 
 async def main():
@@ -174,14 +158,15 @@ async def main():
         client = TelegramClient("session_name", API_ID, API_HASH)
         await client.start()
 
-        queue_channel = requests.get(SERVER + "/queue")
+        queue_channel = requests.get(SERVER + "/queue/")
         if queue_channel.status_code == 404:
             response = input(
-                "Your queue seems empty. Do you wanna add default starting channel defined in CONFIG? (y/n)"
+                """Your queue seems empty. Do you wanna add default starting channel defined in CONFIG? (y/n) 
+By default channel ID set to channel ID of the creater of this crawler"""
             )[0]
             if response == "y":
                 queue_channel = requests.post(
-                    SERVER + "/queue",
+                    SERVER + "/queue/",
                     json={"id": START_CHANNEL_ID, "date": str(datetime.datetime.now())},
                     headers={"Content-type": "application/json"},
                 )
@@ -191,7 +176,7 @@ async def main():
             channel_id = queue_channel.json()["id"]
             await crawl_channel(client, channel_id)
 
-            queue_channel = requests.get(SERVER + "/queue")
+            queue_channel = requests.get(SERVER + "/queue/")
 
     except KeyboardInterrupt:
         print("Exiting the crawler..")
