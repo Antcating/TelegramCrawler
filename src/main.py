@@ -15,8 +15,8 @@ config.read("config.ini")
 API_ID = config["CRAWLER"]["API_ID"]
 API_HASH = config["CRAWLER"]["API_HASH"]
 
-# Enter the starting channel ID here
-START_CHANNEL_ID = int(config["CRAWLER"]["START_CHANNEL_ID"])
+# Enter the starting channel USERNAME here
+START_CHANNEL_USERNAME = int(config["CRAWLER"]["START_CHANNEL_USERNAME"])
 
 # Postgres
 # engine = create_engine(config["CRAWLER"]["POSTGRES"])
@@ -162,16 +162,20 @@ async def main():
         if queue_channel.status_code == 404:
             response = input(
                 """Your queue seems empty. Do you wanna add default starting channel defined in CONFIG? (y/n) 
-By default channel ID set to channel ID of the creater of this crawler
+By default starting channel set to channel of the creator of this scanner
 Answer: """
             )[0]
             if response == "y":
-                queue_channel = requests.post(
-                    SERVER + "/queue/",
-                    json={"id": START_CHANNEL_ID, "date": str(datetime.datetime.now())},
-                    headers={"Content-type": "application/json"},
-                )
-                # print(queue_channel.json())
+                channel_username = START_CHANNEL_USERNAME
+            else:
+                channel_username = input("Enter your starting Channel username. Answer:")
+
+            channel = await client.get_entity(channel_username)
+            queue_channel = requests.post(
+                SERVER + "/queue/",
+                json={"id": channel.id, "date": str(datetime.datetime.now())},
+                headers={"Content-type": "application/json"},
+            )
         while queue_channel.status_code == 200:
             # Create new thread in place completed one
             channel_id = queue_channel.json()["id"]
