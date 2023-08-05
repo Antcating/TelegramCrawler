@@ -10,7 +10,7 @@
 
 ---
 
-<p align="center"> Telegram Crawler - Telegram Channel connections scanner. It can detect connections between Channels, such as: 
+<p align="center"> Telegram Crawler - parser for connections between Channels in Telegram. It can detect connections between Channels, such as: 
 Forwards, Mentions and direct links to other Channels.  
     <br> 
 
@@ -50,15 +50,12 @@ Go to the project folder
 cd TelegramCrawler
 ```
 
----
 The appropriate thing to do is to create virtual environment for this project. *Most of the newer Linux distros and forcing users to create virtual environments and not install Python packages system-wide*
 
 Create virtual environment for this project in the working directory 
 ```
 python -m venv .
 ```
-
----
 
 Install all the dependencies
 ```
