@@ -20,6 +20,7 @@ Forwards, Mentions and direct links to other Channels.
 
 - [About](#about)
 - [Getting Started](#getting_started)
+- [Configs](#configs)
 - [Usage](#usage)
 - [Built Using](#built_using)
 - [Authors](#authors)
@@ -62,6 +63,8 @@ Install all the dependencies
 pip install -r requirements.txt
 ```
 
+For parser to work you has to provide Telegram `API_HASH` and `API_ID`. To get them visit [my.telegram.org/](https://my.telegram.org/) and create new application. After that you will get your Telegram API_ID and API_HASH on top of the application page. More info [here](https://core.telegram.org/api/obtaining_api_id). Paste your `API_ID` and `API_HASH` into `config.ini` file, located in the root of the project directory. 
+
 You are done with installation. Now we proceed to running the parser
 
 ## 🎈 Usage <a name="usage"></a>
@@ -73,6 +76,12 @@ python src/main.py
 ```
 
 If the installation was successful, you would be presented with question about starting point of the parser. After that parser should be running without any problems.
+
+## 📖 Configs <a name="configs"></a>
+
+You can change your starting channel prompt in the `config.ini` file on the row `START_CHANNEL_USERNAME`.
+
+Also, if you are deploying your backend on external server and not locally - you can specify `ip:port` of your server.
 
 ## ⛏️ Built Using <a name = "built_using"></a>
 
