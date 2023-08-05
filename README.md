@@ -81,7 +81,7 @@ If the installation was successful, you would be presented with question about s
 
 You can change your starting channel prompt in the `config.ini` file on the row `START_CHANNEL_USERNAME`.
 
-Also, if you are deploying your backend on external server and not locally - you can specify `ip:port` of your server.
+Also, if you are deploying your backend on external server and not locally - you can specify `ip:port` of your server on the row `SERVER`.
 
 ## ⛏️ Built Using <a name = "built_using"></a>
 
