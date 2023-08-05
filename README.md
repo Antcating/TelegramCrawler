@@ -58,6 +58,11 @@ Create virtual environment for this project in the working directory
 python -m venv .
 ```
 
+Activate virtual environment
+```
+source bin/activate
+```
+
 Install all the dependencies
 ```
 pip install -r requirements.txt

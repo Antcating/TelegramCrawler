@@ -16,7 +16,7 @@ API_ID = config["CRAWLER"]["API_ID"]
 API_HASH = config["CRAWLER"]["API_HASH"]
 
 # Enter the starting channel USERNAME here
-START_CHANNEL_USERNAME = int(config["CRAWLER"]["START_CHANNEL_USERNAME"])
+START_CHANNEL_USERNAME = config["CRAWLER"]["START_CHANNEL_USERNAME"]
 
 # Postgres
 # engine = create_engine(config["CRAWLER"]["POSTGRES"])
