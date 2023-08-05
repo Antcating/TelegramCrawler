@@ -70,7 +70,7 @@ Install all the dependencies
 pip install -r requirements.txt
 ```
 
-For parser to work you has to provide Telegram `API_HASH` and `API_ID`. To get them visit [my.telegram.org/](https://my.telegram.org/) and create new application. After that you will get your Telegram API_ID and API_HASH on top of the application page. More info [here](https://core.telegram.org/api/obtaining_api_id). Paste your `API_ID` and `API_HASH` into `config.ini` file, located in the root of the project directory. 
+For parser to work you have to provide Telegram `API_HASH` and `API_ID`. To get them visit [my.telegram.org/](https://my.telegram.org/) and create new application. After that you will get your Telegram API_ID and API_HASH on top of the application page. More info [here](https://core.telegram.org/api/obtaining_api_id). Paste your `API_ID` and `API_HASH` into `config.ini` file, located in the root of the project directory. 
 
 You are done with installation. Now we proceed to running the parser
 
