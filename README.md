@@ -72,7 +72,7 @@ Before running the project make sure, that **backend is running on `127.0.0.1`**
 python src/main.py
 ```
 
-If the installation was successful, you would be presented with question about starting point of the scanner. After that, the scanner should be running without problems.
+If the installation was successful, you would be presented with question about starting point of the scanner. After that the scanner should be running without any problems.
 
 ## ⛏️ Built Using <a name = "built_using"></a>
 
