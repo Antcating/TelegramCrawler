@@ -50,7 +50,7 @@ Go to the project folder
 cd TelegramCrawler
 ```
 
-The appropriate thing to do is to create virtual environment for this project. *Most of the newer Linux distros and forcing users to create virtual environments and not install Python packages system-wide*
+The appropriate thing to do is to create virtual environment for this project. *Newer Linux distros are forcing users to create virtual environments and not install Python packages system-wide*
 
 Create virtual environment for this project in the working directory 
 ```
