@@ -40,6 +40,8 @@ This project written in Python, so you have to make sure you have [Python](https
 
 Make sure, Python is operative and you can proceed to installation.
 
+Also this project **requires** [separate back-end](https://github.com/Antcating/TelegramCrawlerAPI) to be working already before running this project. Make sure to set it up before proceeding with installation.
+
 ### Installing
 
 Clone this repo: 
