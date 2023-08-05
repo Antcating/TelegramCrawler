@@ -162,7 +162,7 @@ async def main():
         if queue_channel.status_code == 404:
             response = input(
                 """Your queue seems empty. Do you wanna add default starting channel defined in CONFIG? (y/n) 
-By default starting channel set to channel of the creator of this scanner
+By default starting channel set to channel of the creator of this parser (madan_science)
 Answer: """
             )[0]
             if response == "y":
