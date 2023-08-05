@@ -10,7 +10,7 @@
 
 ---
 
-<p align="center"> Telegram Crawler - parser for connections between Channels in Telegram. It can detect connections between Channels, such as: 
+<p align="center"> Telegram Crawler - parser for connections between Channels in Telegram. It can detect connections such as: 
 Forwards, Mentions and direct links to other Channels.  
     <br> 
 
@@ -26,8 +26,8 @@ Forwards, Mentions and direct links to other Channels.
 
 ## 🧐 About <a name = "about"></a>
 
-Telegram Crawler is the scanner for connections between Channels in Telegram. It is written in Python and mostly based on [telethon](https://github.com/LonamiWebs/Telethon). This project requires [separate back-end](https://github.com/Antcating/TelegramCrawlerAPI). Back-end based on PostgresQL and FastAPI, so that it allows 
-multiple scanners running in parallel to increase scanning speed. 
+Telegram Crawler is the parser for connections between Channels in Telegram. It is written in Python and mostly based on [telethon](https://github.com/LonamiWebs/Telethon). This project requires [separate back-end](https://github.com/Antcating/TelegramCrawlerAPI). Back-end based on PostgresQL and FastAPI, so that it allows 
+multiple parsers running in parallel to increase scanning speed. 
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
@@ -62,7 +62,7 @@ Install all the dependencies
 pip install -r requirements.txt
 ```
 
-You are done with installation. Now we proceed to running the scanner
+You are done with installation. Now we proceed to running the parser
 
 ## 🎈 Usage <a name="usage"></a>
 
@@ -72,7 +72,7 @@ Before running the project make sure, that **backend is running on `127.0.0.1`**
 python src/main.py
 ```
 
-If the installation was successful, you would be presented with question about starting point of the scanner. After that the scanner should be running without any problems.
+If the installation was successful, you would be presented with question about starting point of the parser. After that parser should be running without any problems.
 
 ## ⛏️ Built Using <a name = "built_using"></a>
 
