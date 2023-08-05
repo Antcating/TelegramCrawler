@@ -80,7 +80,9 @@ Before running the project make sure, that **backend is running on `127.0.0.1`**
 python src/main.py
 ```
 
-If the installation was successful, you would be presented with question about starting point of the parser. After that parser should be running without any problems.
+If the installation was successful, you would be asked to enter mobile number for the account, that you created `API_ID` and `API_HASH`. This is regular Telegram procedure, you are creating new session for your Telegram account.  
+
+After you completed Telegram login, would be presented with question about starting point of the parser. After that parser should be running without any problems.
 
 ## 📖 Configs <a name="configs"></a>
 
